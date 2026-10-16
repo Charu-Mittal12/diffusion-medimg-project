@@ -1,11 +1,26 @@
 #!/bin/bash
 # One-command end-to-end run of the full pipeline, in order.
-# Usage: bash scripts/run_full_pipeline.sh [path/to/config.yaml]
+#
+# Usage:
+#   bash scripts/run_full_pipeline.sh smoke   # tiny config, runs in minutes
+#   bash scripts/run_full_pipeline.sh full    # real config, 1-2+ hours
+#   bash scripts/run_full_pipeline.sh path/to/custom_config.yaml  # anything else
 
 set -e  # stop immediately if any stage fails — don't silently continue
           # on bad data into a wasted training run
 
-CONFIG=${1:-configs/config.yaml}
+export PYTHONPATH="$(pwd)"   # so every stage can `from src...` regardless
+                               # of how/where it's invoked from
+
+MODE=${1:-smoke}   # defaults to smoke if nothing passed, safer default
+
+case "$MODE" in
+  smoke) CONFIG="configs/config_smoke.yaml" ;;
+  full)  CONFIG="configs/config_full.yaml" ;;
+  *)     CONFIG="$MODE" ;;  # treat anything else as a literal path
+esac
+
+echo "Using config: $CONFIG"
 
 echo "=== Stage 1: Data preparation ==="
 python src/data/prepare_data.py --config "$CONFIG"

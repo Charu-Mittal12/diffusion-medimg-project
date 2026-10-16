@@ -1,0 +1,71 @@
+# ============================================================
+# SMOKE TEST config — tiny values, runs in minutes. Use this to
+# catch bugs cheaply BEFORE running the real config_full.yaml.
+# Pass explicitly: --config configs/config_smoke.yaml
+# ============================================================
+
+project:
+  name: "diffusion-medimg"
+  wandb_project: "diffusion-medical-imaging"
+  wandb_entity: null          # set to your W&B username/team, or leave null
+  seed: 42
+  output_dir: "outputs"
+
+data:
+  dataset_source: "nih_chestxray14"
+  hf_dataset_id: "alkzar90/NIH-Chest-X-ray-dataset"
+  target_pathology: "Hernia"        # rarest class in NIH-14 (~0.2% of images)
+  n_finetune_images: 10             # SMOKE: tiny — real values use 50
+  n_negative_pool: 50               # SMOKE: tiny — real values use 5000
+  test_split_fraction: 0.2          # held-out REAL test set, never touched by synthetic data
+  image_export_dir: "data/lora_train_images"
+  caption_template: "a chest x-ray showing {class_name}"
+  class_name: "a hernia"
+  resolution_on_disk: 512
+
+lora_training:
+  base_model: "runwayml/stable-diffusion-v1-5"
+  resolution: 512
+  train_batch_size: 1
+  gradient_accumulation_steps: 4
+  learning_rate: 1.0e-4
+  lr_scheduler: "constant"
+  max_train_steps: 20               # SMOKE: tiny — real values use 800
+  lora_rank: 8
+  lora_alpha: 16
+  mixed_precision: "fp16"
+  checkpointing_steps: 10           # SMOKE: tiny — real values use 200
+  output_dir: "outputs/lora-weights"
+  prior_preservation: true          # DreamBooth-style class-prior regularization
+  num_class_images: 10              # SMOKE: tiny — real values use 100
+  prior_loss_weight: 1.0
+  class_prompt: "a chest x-ray"
+
+generation:
+  num_synthetic_images: 10          # SMOKE: tiny — real values use 1000
+  num_inference_steps: 10           # SMOKE: faster — real values use 30
+  guidance_scale: 2.0
+  resolution: 512
+  output_dir: "outputs/synthetic_images"
+
+diversity_check:
+  lpips_net: "alex"
+  nn_similarity_metric: "lpips"
+  nn_flag_threshold: 0.05
+
+classifier:
+  model: "resnet18"
+  pretrained: true
+  epochs: 2                         # SMOKE: tiny — real values use 15
+  batch_size: 8                     # SMOKE: smaller — real values use 32
+  learning_rate: 1.0e-4
+  synthetic_ratios: [0.0, 1.0]      # SMOKE: just 2 ratios — real values test 6
+  cv_folds: 5
+
+denoising:
+  noise_type: "gaussian"
+  gaussian_sigma: 25
+  partial_denoise_start_frac: 0.3
+  classical_baselines: ["median", "gaussian_blur"]
+  median_kernel_size: 3
+  gaussian_blur_kernel_size: 3
