@@ -12,8 +12,9 @@ project:
   output_dir: "outputs"
 
 data:
-  dataset_source: "nih_chestxray14"
-  hf_dataset_id: "alkzar90/NIH-Chest-X-ray-dataset"
+  dataset_source: "kaggle_mount"   # "kaggle_mount" (fast, needs Kaggle's NIH Chest X-rays added as Input) or "huggingface" (slow, works anywhere)
+  kaggle_mount_dir: "/kaggle/input/datasets/nih-chest-xrays/data"   # confirm with `!ls /kaggle/input` if this ever changes
+  hf_dataset_id: "alkzar90/NIH-Chest-X-ray-dataset"   # only used when dataset_source is "huggingface"
   hf_dataset_config: "image-classification"   # other option is "object-detection" — different subset/labels
   target_pathology: "Hernia"        # rarest class in NIH-14 (~0.2% of images)
   n_finetune_images: 10             # SMOKE: tiny — real values use 50
