@@ -1,0 +1,21 @@
+# torch / torchvision intentionally NOT pinned here — on Kaggle/Colab these
+# come pre-installed and matched to the notebook's CUDA drivers. Reinstalling
+# a specific pinned version on top can break GPU detection. If you need an
+# exact version for strict reproducibility outside Kaggle/Colab, pin it
+# separately in requirements.lock.txt instead, checked against
+# `!python -c "import torch; print(torch.__version__)"` run FIRST.
+diffusers==0.27.2
+transformers==4.40.0
+accelerate==0.29.3
+peft==0.10.0
+medmnist==3.0.1
+wandb==0.17.0
+lpips==0.1.4
+scikit-image==0.23.2
+scikit-learn==1.4.2
+opencv-python==4.9.0.80
+pillow==10.3.0
+numpy==1.26.4
+pyyaml==6.0.1
+tqdm==4.66.2
+matplotlib==3.8.4
