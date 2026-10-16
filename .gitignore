@@ -18,3 +18,4 @@ wandb/
 
 # OS
 .DS_Store
+.lh/
