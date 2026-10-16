@@ -14,6 +14,7 @@ project:
 data:
   dataset_source: "nih_chestxray14"
   hf_dataset_id: "alkzar90/NIH-Chest-X-ray-dataset"
+  hf_dataset_config: "image-classification"   # other option is "object-detection" — different subset/labels
   target_pathology: "Hernia"        # rarest class in NIH-14 (~0.2% of images)
   n_finetune_images: 10             # SMOKE: tiny — real values use 50
   n_negative_pool: 50               # SMOKE: tiny — real values use 5000
