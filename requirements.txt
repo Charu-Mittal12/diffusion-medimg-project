@@ -11,6 +11,7 @@
 # source without a Rust toolchain. A range lets pip pick a newer
 # transformers whose tokenizers dependency already has a matching wheel.
 diffusers==0.27.2
+huggingface_hub>=0.20,<0.26   # diffusers 0.27.2 still calls the old cached_download() API, removed in huggingface_hub 0.26
 transformers>=4.40,<5
 accelerate==0.29.3
 peft==0.10.0
