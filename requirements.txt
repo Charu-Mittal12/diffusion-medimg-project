@@ -15,7 +15,7 @@ transformers>=4.40,<5
 accelerate==0.29.3
 peft==0.10.0
 medmnist==3.0.1
-wandb==0.17.0
+wandb>=0.17.1,<1
 lpips==0.1.4
 
 # Scientific / utility libraries — kept as flexible ranges rather than exact
