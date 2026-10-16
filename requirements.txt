@@ -4,6 +4,8 @@
 # exact version for strict reproducibility outside Kaggle/Colab, pin it
 # separately in requirements.lock.txt instead, checked against
 # `!python -c "import torch; print(torch.__version__)"` run FIRST.
+
+# Core ML libraries — pinned exactly, these have wheels for recent Python
 diffusers==0.27.2
 transformers==4.40.0
 accelerate==0.29.3
@@ -11,11 +13,18 @@ peft==0.10.0
 medmnist==3.0.1
 wandb==0.17.0
 lpips==0.1.4
+
+# Scientific / utility libraries — kept as flexible ranges rather than exact
+# pins. Several of these (scikit-learn, scikit-image, numpy at the originally
+# pinned versions) have no prebuilt wheel on newer Python (e.g. 3.13, which
+# Kaggle may run), forcing a from-source build that fails without system
+# build tools. A range lets pip pick whatever prebuilt wheel actually exists
+# for the environment's Python version.
 scikit-image>=0.22,<0.26
-scikit-learn==1.4.2
-opencv-python==4.9.0.80
-pillow==10.3.0
-numpy==1.26.4
-pyyaml==6.0.1
-tqdm==4.66.2
-matplotlib==3.8.4
+scikit-learn>=1.4,<1.7
+opencv-python>=4.9,<4.11
+pillow>=10.3,<11
+numpy>=1.26,<3
+pyyaml>=6.0,<7
+tqdm>=4.66,<5
+matplotlib>=3.8,<4
