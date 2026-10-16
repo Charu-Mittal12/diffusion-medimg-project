@@ -15,8 +15,10 @@ transformers>=4.40,<5
 accelerate==0.29.3
 peft==0.10.0
 medmnist==3.0.1
-wandb>=0.17.1,<1
+wandb>=0.17.1,<1   # 0.17.0 exactly references np.float_, removed in NumPy 2.0 — needs a newer wandb release
+protobuf>=5   # pinned loosely alongside wandb — an old protobuf can mismatch wandb's generated code (gencode/runtime version error)
 lpips==0.1.4
+datasets>=2.14,<3   # newer major versions dropped legacy script-based dataset loading, which the NIH-14 HF mirror still uses
 
 # Scientific / utility libraries — kept as flexible ranges rather than exact
 # pins, for the same reason: some exact-pinned older versions have no

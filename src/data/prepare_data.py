@@ -55,7 +55,7 @@ def main(config_path: str):
     run = init_run(config, job_type="data-prep", run_name="prepare_data")
 
     print("Loading NIH ChestX-ray14 (this may take a while on first run)...")
-    ds = load_dataset(config["data"]["hf_dataset_id"], split="train")
+    ds = load_dataset(config["data"]["hf_dataset_id"], split="train", trust_remote_code=True)
 
     pathology = config["data"]["target_pathology"]
     caption = config["data"]["caption_template"].format(class_name=config["data"]["class_name"])
