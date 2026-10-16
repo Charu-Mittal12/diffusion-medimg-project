@@ -5,9 +5,13 @@
 # separately in requirements.lock.txt instead, checked against
 # `!python -c "import torch; print(torch.__version__)"` run FIRST.
 
-# Core ML libraries — pinned exactly, these have wheels for recent Python
+# Core ML libraries. transformers is a RANGE, not an exact pin — 4.40.0
+# depends on tokenizers 0.19.x, which has no prebuilt wheel for newer
+# Python (e.g. 3.13) and is written in Rust, so it fails building from
+# source without a Rust toolchain. A range lets pip pick a newer
+# transformers whose tokenizers dependency already has a matching wheel.
 diffusers==0.27.2
-transformers==4.40.0
+transformers>=4.40,<5
 accelerate==0.29.3
 peft==0.10.0
 medmnist==3.0.1
@@ -15,11 +19,9 @@ wandb==0.17.0
 lpips==0.1.4
 
 # Scientific / utility libraries — kept as flexible ranges rather than exact
-# pins. Several of these (scikit-learn, scikit-image, numpy at the originally
-# pinned versions) have no prebuilt wheel on newer Python (e.g. 3.13, which
-# Kaggle may run), forcing a from-source build that fails without system
-# build tools. A range lets pip pick whatever prebuilt wheel actually exists
-# for the environment's Python version.
+# pins, for the same reason: some exact-pinned older versions have no
+# prebuilt wheel on newer Python, forcing a from-source build that fails
+# without system build tools.
 scikit-image>=0.22,<0.26
 scikit-learn>=1.4,<1.7
 opencv-python>=4.9,<4.11
