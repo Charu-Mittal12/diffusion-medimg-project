@@ -48,7 +48,7 @@ def build_model(device):
     return model.to(device)
 
 
-def train_one_config(synthetic_ratio, config, transform, device, run):
+def train_one_config(synthetic_ratio, config, train_transform, test_transform, device, run):
     cfg = config["classifier"]
     data_cfg = config["data"]
 
@@ -70,17 +70,31 @@ def train_one_config(synthetic_ratio, config, transform, device, run):
         ]
 
     train_pairs = real_positive + synthetic_positive + real_negative_pool
-    train_dataset = ImageFolderBinary(train_pairs, transform)
+    train_dataset = ImageFolderBinary(train_pairs, train_transform)
     train_loader = DataLoader(train_dataset, batch_size=cfg["batch_size"], shuffle=True)
 
     test_positive = list_images("data/test_real/positive", label=1)
     test_negative = list_images("data/test_real/negative", label=0)
-    test_dataset = ImageFolderBinary(test_positive + test_negative, transform)
+    test_dataset = ImageFolderBinary(test_positive + test_negative, test_transform)
     test_loader = DataLoader(test_dataset, batch_size=cfg["batch_size"], shuffle=False)
 
     model = build_model(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg["learning_rate"])
-    criterion = nn.CrossEntropyLoss()
+
+    # Class-weighted loss: with only ~17% positives, unweighted CE barely
+    # penalizes the model for ignoring the minority class, so it defaults
+    # to predicting negative almost everywhere (exactly what we saw:
+    # precision pinned at 1.0, recall stuck ~0.16 across several ratios).
+    # Inverse-frequency weighting (sklearn's "balanced" scheme) pushes
+    # back against that.
+    n_pos_train = len(real_positive) + len(synthetic_positive)
+    n_neg_train = len(real_negative_pool)
+    n_total_train = n_pos_train + n_neg_train
+    class_weights = torch.tensor([
+        n_total_train / (2.0 * n_neg_train),  # weight for class 0 (negative)
+        n_total_train / (2.0 * n_pos_train),  # weight for class 1 (positive)
+    ], dtype=torch.float32, device=device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     for epoch in range(cfg["epochs"]):
         model.train()
