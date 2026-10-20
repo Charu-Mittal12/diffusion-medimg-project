@@ -1,36 +1,43 @@
-# torch / torchvision intentionally NOT pinned here — on Kaggle/Colab these
-# come pre-installed and matched to the notebook's CUDA drivers. Reinstalling
-# a specific pinned version on top can break GPU detection. If you need an
-# exact version for strict reproducibility outside Kaggle/Colab, pin it
-# separately in requirements.lock.txt instead, checked against
-# `!python -c "import torch; print(torch.__version__)"` run FIRST.
+Write the reflection from what you actually saw. It’s graded on being specific and checkable, and the instructions say it must cite an exact trace line and timestamp. I haven’t seen your full traces, so I won’t write the story for you. I can show you what to look for and give a skeleton.
 
-# Core ML libraries. transformers is a RANGE, not an exact pin — 4.40.0
-# depends on tokenizers 0.19.x, which has no prebuilt wheel for newer
-# Python (e.g. 3.13) and is written in Rust, so it fails building from
-# source without a Rust toolchain. A range lets pip pick a newer
-# transformers whose tokenizers dependency already has a matching wheel.
-diffusers==0.27.2
-huggingface_hub>=0.20,<0.26   # diffusers 0.27.2 still calls the old cached_download() API, removed in huggingface_hub 0.26
-transformers>=4.40,<5
-accelerate==0.29.3
-peft==0.10.0
-medmnist==3.0.1
-wandb>=0.17.1,<1   # 0.17.0 exactly references np.float_, removed in NumPy 2.0 — needs a newer wandb release
-protobuf>=5   # pinned loosely alongside wandb — an old protobuf can mismatch wandb's generated code (gencode/runtime version error)
-lpips==0.1.4
-datasets>=2.14,<3   # newer major versions dropped legacy script-based dataset loading, which the NIH-14 HF mirror still uses
-pandas>=2.0,<3   # used to filter Data_Entry_2017.csv when dataset_source is kaggle_mount
+What your q2 trace already shows
 
-# Scientific / utility libraries — kept as flexible ranges rather than exact
-# pins, for the same reason: some exact-pinned older versions have no
-# prebuilt wheel on newer Python, forcing a from-source build that fails
-# without system build tools.
-scikit-image>=0.22,<0.26
-scikit-learn>=1.4,<1.7
-opencv-python>=4.9,<4.11
-pillow>=10.3,<11
-numpy>=1.26,<3
-pyyaml>=6.0,<7
-tqdm>=4.66,<5
-matplotlib>=3.8,<4
+Parallel tool calls (lines 2 to 4). One LLM call at time 1792352397.711 (line 2) asked for both lookup_node calls. They were executed at lines 3 and 4. The same happens at lines 5 to 7 for node_degree on DEL and BOM.
+The model followed the intended path. It looked up the names first, then used the IDs, and didn’t guess. Lines 3 and 4 show Delhi → DEL and Mumbai → BOM.
+Unprompted, the arguments came in a different order each time (name first in line 3, graph_id first in line 4). That’s harmless but shows the model builds each call separately.
+
+If q2 went smoothly, that’s fine, but a smooth run gives a weak reflection. The handout suggests trying something that can fail. Better candidates:
+
+Check the full lines of q1 and q3. Did the model call lookup_node for “Chennai” or guess MAA? Did it recognise that “club’s instructor” is node m1, or did it search by name and have to retry?
+Check the final answer (line 8 or 9) against the tool outputs on lines 6 and 7. Is the difference it states exactly in-degree DEL minus in-degree BOM? Models sometimes use the total degree instead of in_degree.
+Run an extra experiment, such as asking about “Bombay” or a city not in the data. Add the question as a temporary fourth line in bootcamp/questions.txt, watch what happens, then remove it and rerun so the final traces match the original three questions. Only cite a line from a trace that ends up in your submission.
+
+Skeleton (150 to 250 words, in your own words)
+
+Name: <your name>
+Student id: <your id>
+LLM provider and model used: Google Gemini, gemini-3.8-flash
+
+<What happened, with the exact place>: In bootcamp/traces/q2.jsonl, line N
+(time 1792...), the model ...
+
+<What I expected vs what happened>: I expected ..., but ...
+
+<Likely cause>: I think this happened because ... (e.g. the system prompt rule about
+names vs IDs, the tool description, the model's parallel calling).
+
+<What I did or would change>: I changed ... / I would change ...
+
+Replace the example line and time with ones from your own file. Check them with:
+
+bash
+grep -n "" bootcamp/traces/q2.jsonl | cut -c1-120
+
+Check the word count with:
+
+bash
+sed -n '/^Name/,$p' bootcamp/reflection.md | wc -w
+
+Delete the HTML comment blocks at the bottom once you’ve filled it in. They count as extra text.
+
+If you tell me what actually surprised you in q1, q2 or q3 (or paste the relevant lines), I’ll help you tighten the wording.

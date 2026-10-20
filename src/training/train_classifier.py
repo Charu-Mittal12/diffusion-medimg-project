@@ -59,6 +59,10 @@ def train_one_config(synthetic_ratio, config, transform, device, run):
     synthetic_positive = []
     if n_synthetic > 0:
         synth_dir = config["generation"]["output_dir"]
+        if not os.path.isdir(synth_dir) or not any(f.endswith(".png") for f in os.listdir(synth_dir)):
+            print(f"  Skipping synthetic_ratio={synthetic_ratio}: no synthetic images found yet "
+                  f"in {synth_dir} (run generate_samples.py first, then rerun this script).")
+            return None
         synth_files = sorted(f for f in os.listdir(synth_dir) if f.endswith(".png"))
         random.shuffle(synth_files)
         synthetic_positive = [
