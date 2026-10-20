@@ -85,7 +85,10 @@ def main(config_path: str):
     pipe = StableDiffusionPipeline.from_pretrained(
         config["lora_training"]["base_model"], torch_dtype=torch.float32, safety_checker=None
     ).to(device)
-    pipe.unet.load_adapter(os.path.join(config["lora_training"]["output_dir"], "final"))
+    pipe.load_lora_weights(
+        os.path.join(config["lora_training"]["output_dir"], "final"),
+        weight_name="adapter_model.safetensors",  # peft's save_pretrained() naming, not diffusers' default
+    )
     scheduler = DDPMScheduler.from_pretrained(config["lora_training"]["base_model"], subfolder="scheduler")
 
     test_dir = "data/test_real/positive"
