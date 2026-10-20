@@ -26,7 +26,10 @@ def main(config_path: str):
     pipe = StableDiffusionPipeline.from_pretrained(
         lora_cfg["base_model"], torch_dtype=torch.float16, safety_checker=None
     ).to("cuda")
-    pipe.load_lora_weights(os.path.join(lora_cfg["output_dir"], "final"))
+    pipe.load_lora_weights(
+        os.path.join(lora_cfg["output_dir"], "final"),
+        weight_name="adapter_model.safetensors",  # peft's save_pretrained() naming, not diffusers' default
+    )
 
     prompt = config["data"]["caption_template"].format(class_name=config["data"]["class_name"])
     out_dir = gen_cfg["output_dir"]
