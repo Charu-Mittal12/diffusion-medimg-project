@@ -127,35 +127,70 @@ def main(config_path: str):
     run = init_run(config, job_type="classifier-training", run_name="train_classifier_all_ratios")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    transform = transforms.Compose([
+    # Mild augmentation on the training set only (flips/small rotation are
+    # anatomically reasonable for a chest X-ray). The test set stays
+    # untouched so evaluation is always on the real, unaugmented held-out
+    # images.
+    train_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(degrees=10),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    test_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
     all_results = []
+    skipped_ratios = []
     for ratio in config["classifier"]["synthetic_ratios"]:
         print(f"\n=== Training classifier, synthetic_ratio = {ratio} ===")
         set_seed(config["project"]["seed"])  # reset seed so each ratio starts identically
-        metrics = train_one_config(ratio, config, transform, device, run)
+        metrics = train_one_config(ratio, config, train_transform, test_transform, device, run)
+        if metrics is None:
+            skipped_ratios.append(ratio)
+            continue
         print(metrics)
         all_results.append(metrics)
 
+    if not all_results:
+        print("\nNo ratios produced results (synthetic images not generated yet?). Nothing to log.")
+        run.finish()
+        return
+
     columns = ["synthetic_ratio", "f1", "precision", "recall", "pr_auc",
+               "best_threshold", "best_threshold_f1", "best_threshold_precision", "best_threshold_recall",
                "n_real_positive_train", "n_synthetic_positive_train"]
     rows = [[m[c] for c in columns] for m in all_results]
     log_results_table(run, columns, rows, "classifier_results_by_ratio")
 
-    baseline = next(m for m in all_results if m["synthetic_ratio"] == 0.0)
+    baseline = next((m for m in all_results if m["synthetic_ratio"] == 0.0), None)
     best = max(all_results, key=lambda m: m["f1"])
-    print(f"\nBaseline (real-only) F1: {baseline['f1']:.4f}")
-    print(f"Best F1: {best['f1']:.4f} at synthetic_ratio={best['synthetic_ratio']}")
-    run.log({
-        "summary/baseline_f1": baseline["f1"],
-        "summary/best_f1": best["f1"],
-        "summary/best_ratio": best["synthetic_ratio"],
-        "summary/f1_improvement": best["f1"] - baseline["f1"],
-    })
+    best_tuned = max(all_results, key=lambda m: m["best_threshold_f1"])
+    if baseline is not None:
+        print(f"\nBaseline (real-only) F1 @0.5: {baseline['f1']:.4f}  |  tuned-threshold F1: {baseline['best_threshold_f1']:.4f}")
+        print(f"Best F1 @0.5: {best['f1']:.4f} at synthetic_ratio={best['synthetic_ratio']}")
+        print(f"Best tuned-threshold F1: {best_tuned['best_threshold_f1']:.4f} "
+              f"at synthetic_ratio={best_tuned['synthetic_ratio']} (threshold={best_tuned['best_threshold']:.3f})")
+        run.log({
+            "summary/baseline_f1": baseline["f1"],
+            "summary/baseline_best_threshold_f1": baseline["best_threshold_f1"],
+            "summary/best_f1": best["f1"],
+            "summary/best_ratio": best["synthetic_ratio"],
+            "summary/f1_improvement": best["f1"] - baseline["f1"],
+            "summary/best_tuned_f1": best_tuned["best_threshold_f1"],
+            "summary/best_tuned_ratio": best_tuned["synthetic_ratio"],
+        })
+    else:
+        print(f"\nBest F1 so far: {best['f1']:.4f} at synthetic_ratio={best['synthetic_ratio']} "
+              "(no synthetic_ratio=0.0 baseline run included this time)")
+
+    if skipped_ratios:
+        print(f"\nSkipped ratios (no synthetic images yet): {skipped_ratios}. "
+              "Run generate_samples.py, then rerun this script to fill them in.")
 
     run.finish()
 
