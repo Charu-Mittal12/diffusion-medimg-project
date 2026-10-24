@@ -48,8 +48,11 @@ def build_model(device):
     return model.to(device)
 
 
-def train_one_config(synthetic_ratio, config, train_transform, test_transform, device, run):
-    cfg = config["classifier"]
+def train_one_config(synthetic_ratio, config, train_transform, test_transform, device, run, classifier_cfg=None):
+    # classifier_cfg lets callers (e.g. the --tune grid search below)
+    # override individual classifier hyperparameters per-trial without
+    # mutating the loaded config, falling back to config["classifier"].
+    cfg = classifier_cfg if classifier_cfg is not None else config["classifier"]
     data_cfg = config["data"]
 
     # Use the FULL real positive pool (all non-test real Hernia images —
@@ -124,11 +127,55 @@ def train_one_config(synthetic_ratio, config, train_transform, test_transform, d
     return metrics
 
 
-def main(config_path: str):
+def tune_baseline(config, train_transform, test_transform, device, run):
+    """Small grid search over classifier hyperparameters, real-data-only
+    (synthetic_ratio=0.0), so we can strengthen the classifier itself
+    before bringing synthetic data back into the picture. Grid is read
+    from config["classifier_tuning"], falling back to a sensible default
+    if that section isn't present."""
+    base_cfg = config["classifier"]
+    tuning_cfg = config.get("classifier_tuning", {})
+    learning_rates = tuning_cfg.get("learning_rates", [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4])
+    epochs_options = tuning_cfg.get("epochs_options", [10, 15, 25])
+
+    trials = []
+    for lr in learning_rates:
+        for epochs in epochs_options:
+            trial_cfg = {**base_cfg, "learning_rate": lr, "epochs": epochs}
+            print(f"\n=== Tuning baseline: learning_rate={lr}, epochs={epochs} ===")
+            set_seed(config["project"]["seed"])  # identical starting point for every trial
+            metrics = train_one_config(0.0, config, train_transform, test_transform, device, run,
+                                        classifier_cfg=trial_cfg)
+            metrics["learning_rate"] = lr
+            metrics["epochs"] = epochs
+            print(metrics)
+            trials.append(metrics)
+
+    columns = ["learning_rate", "epochs", "f1", "precision", "recall", "pr_auc",
+               "best_threshold", "best_threshold_f1", "best_threshold_precision", "best_threshold_recall"]
+    rows = [[t[c] for c in columns] for t in trials]
+    log_results_table(run, columns, rows, "classifier_tuning_results")
+
+    best = max(trials, key=lambda t: t["best_threshold_f1"])
+    print(f"\nBest baseline trial: learning_rate={best['learning_rate']}, epochs={best['epochs']} "
+          f"-> tuned-threshold F1={best['best_threshold_f1']:.4f} "
+          f"(F1@0.5={best['f1']:.4f}, precision={best['precision']:.4f}, recall={best['recall']:.4f})")
+    run.log({
+        "tuning/best_learning_rate": best["learning_rate"],
+        "tuning/best_epochs": best["epochs"],
+        "tuning/best_tuned_f1": best["best_threshold_f1"],
+    })
+    print("\nUpdate configs/*.yaml's classifier.learning_rate / classifier.epochs to these values, "
+          "then rerun the normal (non---tune) sweep across synthetic_ratios.")
+    return best
+
+
+def main(config_path: str, tune: bool = False):
     config = load_config(config_path)
     set_seed(config["project"]["seed"])
 
-    run = init_run(config, job_type="classifier-training", run_name="train_classifier_all_ratios")
+    run_name = "train_classifier_tune_baseline" if tune else "train_classifier_all_ratios"
+    run = init_run(config, job_type="classifier-training", run_name=run_name)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Mild augmentation on the training set only (flips/small rotation are
@@ -147,6 +194,11 @@ def main(config_path: str):
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
+
+    if tune:
+        tune_baseline(config, train_transform, test_transform, device, run)
+        run.finish()
+        return
 
     all_results = []
     skipped_ratios = []
@@ -202,5 +254,8 @@ def main(config_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/config.yaml")
+    parser.add_argument("--tune", action="store_true",
+                         help="Grid-search classifier hyperparameters on the real-only baseline "
+                              "(synthetic_ratio=0.0) instead of running the full synthetic_ratios sweep.")
     args = parser.parse_args()
-    main(args.config)
+    main(args.config, tune=args.tune)

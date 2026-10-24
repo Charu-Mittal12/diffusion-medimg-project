@@ -66,6 +66,10 @@ classifier:
   synthetic_ratios: [0.0, 0.5, 1.0, 2.0, 4.0, 10.0]
   cv_folds: 5
 
+classifier_tuning:   # used only by `train_classifier.py --tune` (baseline-only grid search)
+  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]
+  epochs_options: [10, 15, 25]
+
 denoising:
   noise_type: "gaussian"
   gaussian_sigma: 25

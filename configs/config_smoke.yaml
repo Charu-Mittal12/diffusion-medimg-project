@@ -66,6 +66,10 @@ classifier:
   synthetic_ratios: [0.0, 1.0]      # SMOKE: just 2 ratios — real values test 6
   cv_folds: 5
 
+classifier_tuning:   # used only by `train_classifier.py --tune` (baseline-only grid search)
+  learning_rates: [1.0e-4, 5.0e-4]  # SMOKE: tiny grid — real values test 4
+  epochs_options: [2, 3]            # SMOKE: tiny — real values test [10, 15, 25]
+
 denoising:
   noise_type: "gaussian"
   gaussian_sigma: 25
