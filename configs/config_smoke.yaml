@@ -49,6 +49,7 @@ generation:
   num_inference_steps: 10           # SMOKE: faster — real values use 30
   guidance_scale: 2.0
   resolution: 512
+  checkpoint_every: 5    # SMOKE: tiny — real values use 100
   output_dir: "outputs/synthetic_images"
 
 diversity_check:

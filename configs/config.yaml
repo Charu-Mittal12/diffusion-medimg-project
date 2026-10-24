@@ -49,6 +49,7 @@ generation:
   num_inference_steps: 30
   guidance_scale: 2.0
   resolution: 512
+  checkpoint_every: 100   # re-upload progress to W&B every N images, so a Kaggle disconnect loses at most this many
   output_dir: "outputs/synthetic_images"
 
 diversity_check:
