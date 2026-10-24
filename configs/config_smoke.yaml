@@ -21,6 +21,7 @@ data:
   n_negative_pool: 50               # SMOKE: tiny — real values use 5000
   test_split_fraction: 0.2          # held-out REAL test set, never touched by synthetic data
   image_export_dir: "data/lora_train_images"
+  classifier_real_positive_dir: "data/classifier_real_positives"   # all non-test real positives (superset of image_export_dir) — classifier trains on this, not just the LoRA subset
   caption_template: "a chest x-ray showing {class_name}"
   class_name: "a hernia"
   resolution_on_disk: 512

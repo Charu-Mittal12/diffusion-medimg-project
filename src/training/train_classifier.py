@@ -52,7 +52,11 @@ def train_one_config(synthetic_ratio, config, train_transform, test_transform, d
     cfg = config["classifier"]
     data_cfg = config["data"]
 
-    real_positive = list_images(data_cfg["image_export_dir"], label=1)
+    # Use the FULL real positive pool (all non-test real Hernia images —
+    # a superset of the smaller image_export_dir set used for LoRA
+    # fine-tuning), not just the images that happened to be used for LoRA.
+    real_positive_dir = data_cfg.get("classifier_real_positive_dir", "data/classifier_real_positives")
+    real_positive = list_images(real_positive_dir, label=1)
     real_negative_pool = list_images("data/classifier_negatives", label=0)
 
     n_synthetic = int(len(real_positive) * synthetic_ratio)

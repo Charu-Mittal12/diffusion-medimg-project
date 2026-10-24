@@ -159,10 +159,25 @@ def main(config_path: str):
 
         finetune_subset = positive_paths[:n_finetune]
         test_positive_subset = positive_paths[-n_test_positive:]
+        # Everything not held out for testing — the LoRA finetune_subset
+        # PLUS the previously-unused middle slice — exported separately so
+        # the classifier can train on the full real positive pool, not just
+        # the (smaller) subset used for LoRA fine-tuning.
+        classifier_real_positive_subset = positive_paths[: len(positive_paths) - n_test_positive]
 
         export_dir = config["data"]["image_export_dir"]
         n_exported = export_images_from_paths(finetune_subset, export_dir, caption, n_finetune, resolution)
         print(f"Exported {n_exported} captioned images to {export_dir}")
+
+        classifier_real_pos_dir = config["data"].get(
+            "classifier_real_positive_dir", "data/classifier_real_positives"
+        )
+        n_classifier_real_pos = export_images_from_paths(
+            classifier_real_positive_subset, classifier_real_pos_dir, "",
+            len(classifier_real_positive_subset), resolution
+        )
+        print(f"Exported {n_classifier_real_pos} real positive images for the classifier "
+              f"(non-test pool, superset of the {n_finetune}-image LoRA set) to {classifier_real_pos_dir}")
 
         print("Sampling negative ('No Finding' / other) pool...")
         n_neg_pool = config["data"]["n_negative_pool"]
@@ -211,10 +226,25 @@ def main(config_path: str):
 
         finetune_subset = positive_ds.select(range(n_finetune))
         test_positive_subset = positive_ds.select(range(len(positive_ds) - n_test_positive, len(positive_ds)))
+        # Everything not held out for testing — the LoRA finetune_subset
+        # PLUS the previously-unused middle slice — exported separately so
+        # the classifier can train on the full real positive pool, not just
+        # the (smaller) subset used for LoRA fine-tuning.
+        classifier_real_positive_subset = positive_ds.select(range(len(positive_ds) - n_test_positive))
 
         export_dir = config["data"]["image_export_dir"]
         n_exported = export_images(finetune_subset, export_dir, caption, n_finetune, resolution)
         print(f"Exported {n_exported} captioned images to {export_dir}")
+
+        classifier_real_pos_dir = config["data"].get(
+            "classifier_real_positive_dir", "data/classifier_real_positives"
+        )
+        n_classifier_real_pos = export_images(
+            classifier_real_positive_subset, classifier_real_pos_dir, "",
+            len(classifier_real_positive_subset), resolution
+        )
+        print(f"Exported {n_classifier_real_pos} real positive images for the classifier "
+              f"(non-test pool, superset of the {n_finetune}-image LoRA set) to {classifier_real_pos_dir}")
 
         print("Sampling negative ('No Finding' / other) pool...")
         negative_ds = ds.filter(lambda ex: not filter_by_pathology(ex, pathology))
@@ -240,6 +270,9 @@ def main(config_path: str):
     # Log everything as versioned artifacts
     log_dataset_artifact(run, config["data"]["image_export_dir"], "lora-finetune-images",
                           f"{n_exported} real '{pathology}' images used to fine-tune LoRA adapter")
+    log_dataset_artifact(run, classifier_real_pos_dir, "classifier-real-positives",
+                          f"{n_classifier_real_pos} real '{pathology}' images available to the classifier "
+                          f"(non-test pool; superset of the {n_finetune}-image LoRA fine-tuning set)")
     log_dataset_artifact(run, "data/test_real", "held-out-test-set",
                           "Real-only test set, never augmented with synthetic data")
 
