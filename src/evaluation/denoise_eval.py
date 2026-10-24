@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from src.utils.seed import set_seed, load_config
 from src.utils.wandb_logger import init_run, log_results_table
+from src.utils.lora_loading import load_lora_adapter
 
 
 def add_gaussian_noise(img: np.ndarray, sigma: float) -> np.ndarray:
@@ -85,9 +86,8 @@ def main(config_path: str):
     pipe = StableDiffusionPipeline.from_pretrained(
         config["lora_training"]["base_model"], torch_dtype=torch.float32, safety_checker=None
     ).to(device)
-    pipe.load_lora_weights(
-        os.path.join(config["lora_training"]["output_dir"], "final"),
-        weight_name="adapter_model.safetensors",  # peft's save_pretrained() naming, not diffusers' default
+    pipe = load_lora_adapter(
+        pipe, os.path.join(config["lora_training"]["output_dir"], "final"), config["lora_training"]
     )
     scheduler = DDPMScheduler.from_pretrained(config["lora_training"]["base_model"], subfolder="scheduler")
 
