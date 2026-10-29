@@ -65,6 +65,7 @@ classifier:
   learning_rate: 1.0e-4
   synthetic_ratios: [0.0, 0.5, 1.0, 2.0, 4.0, 10.0]
   cv_folds: 5
+  class_weight_basis: "real_only"   # "full" (weight shrinks as synthetic data is added) or "real_only" (weight based on real positives only, decoupled from synthetic_ratio) — switched to real_only per Cui et al. 2019 "effective number of samples" reasoning: synthetic images are correlated/redundant, not independent new information, so they shouldn't be allowed to relax the loss's pressure to catch the rare class
 
 classifier_tuning:   # used only by `train_classifier.py --tune` (baseline-only grid search)
   learning_rates: [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]

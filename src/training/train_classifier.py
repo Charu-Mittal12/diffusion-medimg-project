@@ -94,12 +94,29 @@ def train_one_config(synthetic_ratio, config, train_transform, test_transform, d
     # precision pinned at 1.0, recall stuck ~0.16 across several ratios).
     # Inverse-frequency weighting (sklearn's "balanced" scheme) pushes
     # back against that.
+    #
+    # class_weight_basis controls what counts as "the positive class size"
+    # for this weighting formula:
+    #   "full" (default): len(real_positive) + len(synthetic_positive) —
+    #     as synthetic_ratio grows, the positive weight shrinks, which is
+    #     mathematically "correct" rebalancing but empirically caused
+    #     recall to collapse at high ratios (precision -> 1.0, recall -> 0.45)
+    #     even though diversity_check confirms the synthetic images aren't
+    #     near-duplicates — the model is just being told to be more
+    #     conservative about predicting positive as more synthetic data
+    #     is added, which fights against the point of adding it.
+    #   "real_only": len(real_positive) only — synthetic data boosts the
+    #     model's exposure to the rare class without also diluting the
+    #     loss's incentive to predict it, decoupling "how much synthetic
+    #     data to add" from "how aggressively to predict positive".
+    class_weight_basis = cfg.get("class_weight_basis", "full")
     n_pos_train = len(real_positive) + len(synthetic_positive)
+    n_pos_for_weighting = n_pos_train if class_weight_basis == "full" else len(real_positive)
     n_neg_train = len(real_negative_pool)
     n_total_train = n_pos_train + n_neg_train
     class_weights = torch.tensor([
         n_total_train / (2.0 * n_neg_train),  # weight for class 0 (negative)
-        n_total_train / (2.0 * n_pos_train),  # weight for class 1 (positive)
+        n_total_train / (2.0 * n_pos_for_weighting),  # weight for class 1 (positive)
     ], dtype=torch.float32, device=device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 
